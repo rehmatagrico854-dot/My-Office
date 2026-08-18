@@ -1,1 +1,55 @@
 
+<?xml version="1.0" encoding="UTF-8"?>
+<widget id="com.myoffice.app"
+        version="1.0.0"
+        xmlns="http://www.w3.org/ns/widgets"
+        xmlns:cdv="http://cordova.apache.org/ns/1.0">
+
+    <name>My Office</name>
+
+    <description>
+        My Office - Personal Office Management System
+    </description>
+
+    <author email="support@myoffice.app" href="#">
+        My Office
+    </author>
+
+    <content src="index.html" />
+
+    <access origin="*" />
+
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+
+    <preference name="DisallowOverscroll" value="true" />
+
+    <preference name="Fullscreen" value="false" />
+
+    <preference name="Orientation" value="portrait" />
+
+    <preference name="AndroidXEnabled" value="true" />
+
+    <preference name="android-minSdkVersion" value="24" />
+    <preference name="android-targetSdkVersion" value="36" />
+    <preference name="android-compileSdkVersion" value="36" />
+
+    <preference name="BackgroundColor" value="#F5F7FB" />
+
+    <preference name="StatusBarBackgroundColor" value="#0B1220" />
+
+    <preference name="StatusBarStyle" value="lightcontent" />
+
+    <platform name="android">
+
+        <edit-config file="app/src/main/AndroidManifest.xml"
+                     mode="merge"
+                     target="/manifest/uses-permission">
+        </edit-config>
+
+    </platform>
+
+</widget>
