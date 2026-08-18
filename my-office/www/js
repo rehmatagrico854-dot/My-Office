@@ -1,0 +1,1318 @@
+/* =========================================================
+   MY OFFICE
+   Main Application JavaScript
+   ========================================================= */
+
+
+(function () {
+
+    "use strict";
+
+
+    /* =====================================================
+       APPLICATION STATE
+       ===================================================== */
+
+    const state = {
+
+        currentScreen: "homeScreen",
+
+        activeWorkTab: "tasks",
+
+        activeLetterFilter: "all",
+
+        letters: [],
+
+        tasks: [],
+
+        reminders: [],
+
+        matters: [],
+
+        notes: []
+
+    };
+
+
+    /* =====================================================
+       LOCAL STORAGE
+       ===================================================== */
+
+    const STORAGE_KEY = "myOfficeData";
+
+
+    function saveData() {
+
+        const data = {
+
+            letters: state.letters,
+
+            tasks: state.tasks,
+
+            reminders: state.reminders,
+
+            matters: state.matters,
+
+            notes: state.notes
+
+        };
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(data)
+        );
+
+    }
+
+
+    function loadData() {
+
+        const saved =
+            localStorage.getItem(STORAGE_KEY);
+
+        if (!saved) {
+            return;
+        }
+
+        try {
+
+            const data =
+                JSON.parse(saved);
+
+            state.letters =
+                Array.isArray(data.letters)
+                    ? data.letters
+                    : [];
+
+            state.tasks =
+                Array.isArray(data.tasks)
+                    ? data.tasks
+                    : [];
+
+            state.reminders =
+                Array.isArray(data.reminders)
+                    ? data.reminders
+                    : [];
+
+            state.matters =
+                Array.isArray(data.matters)
+                    ? data.matters
+                    : [];
+
+            state.notes =
+                Array.isArray(data.notes)
+                    ? data.notes
+                    : [];
+
+        } catch (error) {
+
+            console.error(
+                "Unable to load My Office data:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       DATE / TIME
+       ===================================================== */
+
+    function updateDate() {
+
+        const element =
+            document.getElementById("currentDate");
+
+        if (!element) {
+            return;
+        }
+
+        const now = new Date();
+
+        element.textContent =
+            now.toLocaleDateString(
+                "en-GB",
+                {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric"
+                }
+            );
+
+    }
+
+
+    function updateGreeting() {
+
+        const element =
+            document.getElementById("greeting");
+
+        if (!element) {
+            return;
+        }
+
+        const hour =
+            new Date().getHours();
+
+        let greeting = "Good evening";
+
+        if (hour < 12) {
+            greeting = "Good morning";
+        } else if (hour < 17) {
+            greeting = "Good afternoon";
+        }
+
+        element.textContent =
+            greeting;
+
+    }
+
+
+    /* =====================================================
+       NAVIGATION
+       ===================================================== */
+
+    function showScreen(screenId) {
+
+        const screens =
+            document.querySelectorAll(".screen");
+
+        screens.forEach(
+            function (screen) {
+
+                screen.classList.toggle(
+                    "active",
+                    screen.id === screenId
+                );
+
+            }
+        );
+
+
+        const navItems =
+            document.querySelectorAll(".nav-item");
+
+        navItems.forEach(
+            function (item) {
+
+                item.classList.toggle(
+                    "active",
+                    item.dataset.screen === screenId
+                );
+
+            }
+        );
+
+
+        state.currentScreen =
+            screenId;
+
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+
+        renderAll();
+
+    }
+
+
+    function setupNavigation() {
+
+        document
+            .querySelectorAll("[data-screen]")
+            .forEach(
+                function (element) {
+
+                    element.addEventListener(
+                        "click",
+                        function () {
+
+                            const screen =
+                                element.dataset.screen;
+
+                            if (screen) {
+                                showScreen(screen);
+                            }
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+
+    /* =====================================================
+       DASHBOARD
+       ===================================================== */
+
+    function updateDashboard() {
+
+        const letterCount =
+            state.letters.filter(
+                function (letter) {
+                    return letter.status !== "responded";
+                }
+            ).length;
+
+
+        const taskCount =
+            state.tasks.filter(
+                function (task) {
+                    return task.status !== "completed";
+                }
+            ).length;
+
+
+        const reminderCount =
+            state.reminders.filter(
+                function (reminder) {
+                    return !reminder.completed;
+                }
+            ).length;
+
+
+        const matterCount =
+            state.matters.filter(
+                function (matter) {
+                    return matter.status !== "closed";
+                }
+            ).length;
+
+
+        setText(
+            "letterCount",
+            letterCount
+        );
+
+        setText(
+            "taskCount",
+            taskCount
+        );
+
+        setText(
+            "reminderCount",
+            reminderCount
+        );
+
+        setText(
+            "matterCount",
+            matterCount
+        );
+
+
+        setText(
+            "pendingLetterTotal",
+            letterCount
+        );
+
+
+        const today =
+            getDateKey(new Date());
+
+
+        const dueToday =
+            state.letters.filter(
+                function (letter) {
+
+                    return (
+                        letter.status !== "responded" &&
+                        letter.dueDate === today
+                    );
+
+                }
+            ).length;
+
+
+        const overdue =
+            state.letters.filter(
+                function (letter) {
+
+                    return (
+                        letter.status !== "responded" &&
+                        letter.dueDate &&
+                        letter.dueDate < today
+                    );
+
+                }
+            ).length;
+
+
+        setText(
+            "dueLetterTotal",
+            dueToday
+        );
+
+
+        setText(
+            "overdueLetterTotal",
+            overdue
+        );
+
+
+        const total =
+            letterCount +
+            taskCount +
+            reminderCount +
+            matterCount;
+
+
+        setText(
+            "focusCount",
+            total + (total === 1 ? " item" : " items")
+        );
+
+
+        const progress =
+            document.getElementById(
+                "focusProgress"
+            );
+
+
+        if (progress) {
+
+            const completed =
+                state.tasks.filter(
+                    function (task) {
+                        return task.status === "completed";
+                    }
+                ).length;
+
+            const totalTasks =
+                state.tasks.length;
+
+            let percentage = 8;
+
+            if (totalTasks > 0) {
+
+                percentage =
+                    Math.max(
+                        8,
+                        Math.min(
+                            100,
+                            Math.round(
+                                (
+                                    completed /
+                                    totalTasks
+                                ) * 100
+                            )
+                        )
+                    );
+
+            }
+
+            progress.style.width =
+                percentage + "%";
+
+        }
+
+
+        updateAttentionList();
+
+    }
+
+
+    function updateAttentionList() {
+
+        const container =
+            document.getElementById(
+                "attentionList"
+            );
+
+        if (!container) {
+            return;
+        }
+
+
+        const attentionItems = [];
+
+
+        state.letters
+            .filter(
+                function (letter) {
+                    return letter.status !== "responded";
+                }
+            )
+            .slice(0, 3)
+            .forEach(
+                function (letter) {
+
+                    attentionItems.push({
+
+                        type: "letter",
+
+                        title:
+                            letter.subject ||
+                            "Untitled letter",
+
+                        detail:
+                            "Response required"
+
+                    });
+
+                }
+            );
+
+
+        state.tasks
+            .filter(
+                function (task) {
+                    return task.status !== "completed";
+                }
+            )
+            .slice(0, 2)
+            .forEach(
+                function (task) {
+
+                    attentionItems.push({
+
+                        type: "task",
+
+                        title:
+                            task.title ||
+                            "Untitled task",
+
+                        detail:
+                            "Task pending"
+
+                    });
+
+                }
+            );
+
+
+        if (attentionItems.length === 0) {
+
+            container.innerHTML = `
+                <div class="empty-card">
+                    <div class="empty-icon">✦</div>
+                    <h3>Your workspace is ready</h3>
+                    <p>
+                        Add a letter, task, reminder or matter
+                        to begin managing your office.
+                    </p>
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        container.innerHTML =
+            attentionItems
+                .map(
+                    function (item) {
+
+                        return `
+                            <div
+                                class="attention-item"
+                                style="
+                                    background:#ffffff;
+                                    border:1px solid #e6eaf1;
+                                    border-radius:18px;
+                                    padding:16px;
+                                    margin-bottom:10px;
+                                    box-shadow:0 4px 16px rgba(22,34,58,.05);
+                                ">
+
+                                <div
+                                    style="
+                                        font-size:10px;
+                                        font-weight:800;
+                                        letter-spacing:1px;
+                                        color:#405de6;
+                                        margin-bottom:5px;
+                                    ">
+
+                                    ${escapeHtml(
+                                        item.type
+                                            .toUpperCase()
+                                    )}
+
+                                </div>
+
+                                <div
+                                    style="
+                                        font-weight:750;
+                                        font-size:14px;
+                                    ">
+
+                                    ${escapeHtml(
+                                        item.title
+                                    )}
+
+                                </div>
+
+                                <div
+                                    style="
+                                        margin-top:4px;
+                                        font-size:11px;
+                                        color:#6d778b;
+                                    ">
+
+                                    ${escapeHtml(
+                                        item.detail
+                                    )}
+
+                                </div>
+
+                            </div>
+                        `;
+
+                    }
+                )
+                .join("");
+
+    }
+
+
+    /* =====================================================
+       LETTERS
+       ===================================================== */
+
+    function renderLetters() {
+
+        const container =
+            document.getElementById(
+                "lettersList"
+            );
+
+        if (!container) {
+            return;
+        }
+
+
+        let letters =
+            [...state.letters];
+
+
+        if (
+            state.activeLetterFilter ===
+            "pending"
+        ) {
+
+            letters =
+                letters.filter(
+                    function (letter) {
+                        return letter.status !== "responded";
+                    }
+                );
+
+        }
+
+
+        if (
+            state.activeLetterFilter ===
+            "due"
+        ) {
+
+            const today =
+                getDateKey(new Date());
+
+            letters =
+                letters.filter(
+                    function (letter) {
+                        return (
+                            letter.status !== "responded" &&
+                            letter.dueDate === today
+                        );
+                    }
+                );
+
+        }
+
+
+        if (
+            state.activeLetterFilter ===
+            "responded"
+        ) {
+
+            letters =
+                letters.filter(
+                    function (letter) {
+                        return letter.status === "responded";
+                    }
+                );
+
+        }
+
+
+        if (letters.length === 0) {
+
+            container.innerHTML = `
+                <div class="empty-card large-empty">
+                    <div class="empty-icon">✉</div>
+                    <h3>No correspondence here</h3>
+                    <p>
+                        Add your first office letter
+                        to start building your correspondence file.
+                    </p>
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        container.innerHTML =
+            letters
+                .map(
+                    function (letter) {
+
+                        const status =
+                            letter.status ||
+                            "pending";
+
+
+                        return `
+                            <div
+                                class="letter-card"
+                                style="
+                                    background:#ffffff;
+                                    border:1px solid #e6eaf1;
+                                    border-radius:22px;
+                                    padding:18px;
+                                    margin-bottom:12px;
+                                    box-shadow:0 8px 24px rgba(22,34,58,.06);
+                                ">
+
+                                <div
+                                    style="
+                                        display:flex;
+                                        justify-content:space-between;
+                                        gap:12px;
+                                    ">
+
+                                    <div>
+
+                                        <div
+                                            style="
+                                                font-size:10px;
+                                                color:#6d778b;
+                                                font-weight:800;
+                                                letter-spacing:1px;
+                                            ">
+
+                                            LETTER
+                                            ${escapeHtml(
+                                                letter.reference ||
+                                                "—"
+                                            )}
+
+                                        </div>
+
+                                        <div
+                                            style="
+                                                margin-top:7px;
+                                                font-size:16px;
+                                                font-weight:800;
+                                            ">
+
+                                            ${escapeHtml(
+                                                letter.subject ||
+                                                "Untitled letter"
+                                            )}
+
+                                        </div>
+
+                                    </div>
+
+                                    <div
+                                        style="
+                                            font-size:10px;
+                                            font-weight:800;
+                                            color:${status === "responded"
+                                                ? "#16a36a"
+                                                : "#e5484d"};
+                                        ">
+
+                                        ${escapeHtml(
+                                            status
+                                                .toUpperCase()
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+
+                                <div
+                                    style="
+                                        margin-top:13px;
+                                        font-size:11px;
+                                        color:#6d778b;
+                                        line-height:1.6;
+                                    ">
+
+                                    From:
+                                    ${escapeHtml(
+                                        letter.from ||
+                                        "Not specified"
+                                    )}
+
+                                    <br>
+
+                                    Received:
+                                    ${escapeHtml(
+                                        letter.receivedDate ||
+                                        "Not specified"
+                                    )}
+
+                                    ${
+                                        letter.dueDate
+                                            ? `
+                                                <br>
+                                                Response due:
+                                                ${escapeHtml(
+                                                    letter.dueDate
+                                                )}
+                                            `
+                                            : ""
+                                    }
+
+                                </div>
+
+                            </div>
+                        `;
+
+                    }
+                )
+                .join("");
+
+    }
+
+
+    function setupLetterFilters() {
+
+        document
+            .querySelectorAll(
+                "[data-letter-filter]"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            state.activeLetterFilter =
+                                button.dataset.letterFilter;
+
+
+                            document
+                                .querySelectorAll(
+                                    "[data-letter-filter]"
+                                )
+                                .forEach(
+                                    function (item) {
+
+                                        item.classList.toggle(
+                                            "active",
+                                            item === button
+                                        );
+
+                                    }
+                                );
+
+
+                            renderLetters();
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+
+    /* =====================================================
+       WORK TABS
+       ===================================================== */
+
+    function setupWorkTabs() {
+
+        document
+            .querySelectorAll(
+                "[data-tab]"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            state.activeWorkTab =
+                                button.dataset.tab;
+
+
+                            document
+                                .querySelectorAll(
+                                    "[data-tab]"
+                                )
+                                .forEach(
+                                    function (item) {
+
+                                        item.classList.toggle(
+                                            "active",
+                                            item === button
+                                        );
+
+                                    }
+                                );
+
+
+                            renderWorkContent();
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+
+    function renderWorkContent() {
+
+        const container =
+            document.getElementById(
+                "workContent"
+            );
+
+        if (!container) {
+            return;
+        }
+
+
+        let title =
+            "Your work area";
+
+
+        let description =
+            "Tasks, matters, projects and your daily work history will appear here.";
+
+
+        if (
+            state.activeWorkTab ===
+            "tasks"
+        ) {
+
+            title =
+                "Your tasks";
+
+            description =
+                state.tasks.length === 0
+                    ? "Create your first task to start organizing your work."
+                    : "Your office tasks will appear here.";
+
+        }
+
+
+        if (
+            state.activeWorkTab ===
+            "matters"
+        ) {
+
+            title =
+                "Your matters";
+
+            description =
+                "Related letters, tasks, reminders, notes and documents will eventually live together inside each matter.";
+
+        }
+
+
+        if (
+            state.activeWorkTab ===
+            "projects"
+        ) {
+
+            title =
+                "Your projects";
+
+            description =
+                "Keep larger pieces of office work organized here.";
+
+        }
+
+
+        if (
+            state.activeWorkTab ===
+            "dailyLog"
+        ) {
+
+            title =
+                "Daily work log";
+
+            description =
+                "Your daily office activity will be recorded here.";
+
+        }
+
+
+        container.innerHTML = `
+            <div class="empty-card large-empty">
+
+                <div class="empty-icon">
+                    ✓
+                </div>
+
+                <h3>
+                    ${escapeHtml(title)}
+                </h3>
+
+                <p>
+                    ${escapeHtml(description)}
+                </p>
+
+            </div>
+        `;
+
+    }
+
+
+    /* =====================================================
+       QUICK ACTIONS
+       ===================================================== */
+
+    function setupQuickActions() {
+
+        document
+            .querySelectorAll(
+                "[data-action]"
+            )
+            .forEach(
+                function (button) {
+
+                    button.addEventListener(
+                        "click",
+                        function () {
+
+                            openQuickModal(
+                                button.dataset.action
+                            );
+
+                        }
+                    );
+
+                }
+            );
+
+    }
+
+
+    function openQuickModal(action) {
+
+        const modal =
+            document.getElementById(
+                "quickModal"
+            );
+
+        const title =
+            document.getElementById(
+                "modalTitle"
+            );
+
+        const description =
+            document.getElementById(
+                "modalDescription"
+            );
+
+        const actions =
+            document.getElementById(
+                "modalActions"
+            );
+
+
+        const labels = {
+
+            letter: {
+                title: "Add a letter",
+                description:
+                    "Choose how you want to start a correspondence record."
+            },
+
+            task: {
+                title: "Add a task",
+                description:
+                    "Create a task for your office work."
+            },
+
+            reminder: {
+                title: "Add a reminder",
+                description:
+                    "Create something you do not want to forget."
+            },
+
+            note: {
+                title: "Add a note",
+                description:
+                    "Capture a quick office note."
+            }
+
+        };
+
+
+        const selected =
+            labels[action] ||
+            labels.note;
+
+
+        title.textContent =
+            selected.title;
+
+
+        description.textContent =
+            selected.description;
+
+
+        actions.innerHTML = `
+
+            <button
+                class="modal-action-button"
+                data-modal-choice="later">
+
+                Continue
+
+            </button>
+
+            <button
+                class="modal-action-button"
+                data-modal-choice="cancel">
+
+                Cancel
+
+            </button>
+
+        `;
+
+
+        actions
+            .querySelector(
+                '[data-modal-choice="cancel"]'
+            )
+            .addEventListener(
+                "click",
+                closeQuickModal
+            );
+
+
+        actions
+            .querySelector(
+                '[data-modal-choice="later"]'
+            )
+            .addEventListener(
+                "click",
+                function () {
+
+                    closeQuickModal();
+
+                    alert(
+                        selected.title +
+                        " form will be added in the next build stage."
+                    );
+
+                }
+            );
+
+
+        modal.classList.add("active");
+
+    }
+
+
+    function closeQuickModal() {
+
+        const modal =
+            document.getElementById(
+                "quickModal"
+            );
+
+        if (modal) {
+            modal.classList.remove(
+                "active"
+            );
+        }
+
+    }
+
+
+    function setupModal() {
+
+        const closeButton =
+            document.getElementById(
+                "closeModal"
+            );
+
+        if (closeButton) {
+
+            closeButton.addEventListener(
+                "click",
+                closeQuickModal
+            );
+
+        }
+
+
+        const modal =
+            document.getElementById(
+                "quickModal"
+            );
+
+        if (modal) {
+
+            modal.addEventListener(
+                "click",
+                function (event) {
+
+                    if (
+                        event.target === modal
+                    ) {
+
+                        closeQuickModal();
+
+                    }
+
+                }
+            );
+
+        }
+
+    }
+
+
+    /* =====================================================
+       RENDER
+       ===================================================== */
+
+    function renderAll() {
+
+        updateDashboard();
+
+        renderLetters();
+
+        renderWorkContent();
+
+    }
+
+
+    /* =====================================================
+       HELPERS
+       ===================================================== */
+
+    function setText(
+        id,
+        value
+    ) {
+
+        const element =
+            document.getElementById(id);
+
+        if (element) {
+            element.textContent =
+                value;
+        }
+
+    }
+
+
+    function getDateKey(date) {
+
+        const year =
+            date.getFullYear();
+
+
+        const month =
+            String(
+                date.getMonth() + 1
+            ).padStart(2, "0");
+
+
+        const day =
+            String(
+                date.getDate()
+            ).padStart(2, "0");
+
+
+        return (
+            year +
+            "-" +
+            month +
+            "-" +
+            day
+        );
+
+    }
+
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replace(
+                /&/g,
+                "&amp;"
+            )
+            .replace(
+                /</g,
+                "&lt;"
+            )
+            .replace(
+                />/g,
+                "&gt;"
+            )
+            .replace(
+                /"/g,
+                "&quot;"
+            )
+            .replace(
+                /'/g,
+                "&#039;"
+            );
+
+    }
+
+
+    /* =====================================================
+       INITIALIZATION
+       ===================================================== */
+
+    function initialize() {
+
+        loadData();
+
+        updateDate();
+
+        updateGreeting();
+
+        setupNavigation();
+
+        setupLetterFilters();
+
+        setupWorkTabs();
+
+        setupQuickActions();
+
+        setupModal();
+
+        renderAll();
+
+    }
+
+
+    document.addEventListener(
+        "DOMContentLoaded",
+        initialize
+    );
+
+
+})();
