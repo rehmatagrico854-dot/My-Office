@@ -1,0 +1,19 @@
+{
+  "name": "my-office",
+  "displayName": "My Office",
+  "version": "1.0.0",
+  "description": "A beautiful offline-first personal office management application.",
+  "main": "index.js",
+  "scripts": {
+    "build": "cordova build android"
+  },
+  "author": "My Office",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "cordova-android": "^15.1.0"
+  },
+  "devDependencies": {
+    "cordova": "^13.0.0"
+  }
+}
