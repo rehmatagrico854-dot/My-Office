@@ -1,0 +1,81 @@
+name: Build My Office Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  build-android:
+
+    name: Build Android APK
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
+
+
+      - name: Install Cordova
+        run: |
+          npm install -g cordova@13.0.0
+
+
+      - name: Install project dependencies
+        run: |
+          npm install
+
+
+      - name: Add Android platform
+        run: |
+          cordova platform add android@15.1.0
+
+
+      - name: Verify Cordova project
+        run: |
+          cordova requirements
+
+
+      - name: Build Android APK
+        run: |
+          cordova build android --debug
+
+
+      - name: Find generated APK
+        run: |
+          find platforms/android/app/build/outputs/apk -type f -name "*.apk" -print
+
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: My-Office-Android-APK
+          path: platforms/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
